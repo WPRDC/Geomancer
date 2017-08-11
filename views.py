@@ -127,25 +127,74 @@ def parcels_in(request, region_type="", region_name=""):
             return (JsonResponse(BASE_RESPONSE, status=400))
 
 
-def reverse_geocode(request, coord_string, srid=4326, region_types=''):
-    try:
-        lng, lat = parse_coord_string(coord_string)
-        pnt = Point(lng, lat, srid=srid)
-        if region_types:
-            region_types=region_types.split(',')
-            regions = AdminRegion.objects.filter(type__in=region_types, geom__contains=pnt)
-        else:
-            regions = AdminRegion.objects.filter(geom__contains=pnt)
+def reverse_geocode(request):
+    '''
+    
+    :param request: 
+    :param x: 
+    :param y: 
+    :param pin: 
+    :param srid: 
+    :param region_types: 
+    :return: 
+    '''
+    pnt = None
+    response = {}
+    status = 400
+    srid=4326
 
-        results = {region.type.id: {'id': region.name, 'name': region.title} for region in regions}
-        response = {**BASE_RESPONSE, **{'status': 'OK', 'results': results}}
+    if request.method == 'GET':
+        x = request.GET.get('lng', None)
+        y = request.GET.get('lat', None)
+        pin = request.GET.get('pin', None)
+        srid = request.GET.get('srid', None)
+        regions_list = request.GET.get('regions', '')
 
-        status = 200
-    except:
-        if settings.DEBUG:
-            raise
+        # Shorthand params
+        if not x:
+            x = request.GET.get('x', None)
+        if not y:
+            y = request.GET.get('y', None)
+        if not pin:
+            pin = request.GET.get('p', None)
+        if not srid:
+            srid = request.GET.get('s', 4326)
+        if not regions_list:
+            regions_list = request.GET.get('r', '')
+
+        if regions_list:
+            regions_list = regions_list.split(',')
+
+        if pin:
+            parcel = Parcel.objects.get(pin=pin)
+            pnt = parcel.geom.centroid
+        elif x != None and y != None:
+            try:
+                pnt = Point(x=float(x), y=float(y), srid=srid)
+            except:
+                response = {**BASE_RESPONSE,
+                            **{'status': 'ERR', 'results': '',
+                               'help': 'Lat and lng must be in decimal format'}}
         else:
-            response = BASE_RESPONSE
-            status = 400
-    print(json.dumps(response))
+            response = {**BASE_RESPONSE,
+                        **{'status': 'ERR', 'results': '',
+                           'help': 'Coordinates (x/lng & y/lat) or parcel id (PIN) required'}}
+
+        if pnt:
+            if regions_list:
+                regions = AdminRegion.objects.filter(type__in=regions_list, geom__contains=pnt)
+            else:
+                regions = AdminRegion.objects.filter(geom__contains=pnt)
+
+            results = {region.type.id: {'id': region.name, 'name': region.title} for region in regions}
+            response = {**BASE_RESPONSE, **{'status': 'OK', 'results': results}}
+            status = 200
+
+    else:
+        # Wrong request method
+        response = {**BASE_RESPONSE, **{'status': 'ERR', 'results': '', 'help': '"{}" not supported for this view.'.format(request.method)}}
+
     return JsonResponse(response, status=status)
+
+
+

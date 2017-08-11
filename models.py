@@ -38,7 +38,7 @@ class AdminRegion(models.Model):
 
 class Parcel(models.Model):
     objectid = models.BigIntegerField()
-    pin = models.CharField(max_length=80)
+    pin = models.CharField(db_index=True, max_length=80)
     mapblocklo = models.CharField(max_length=80)
     shapearea = models.FloatField()
     shapelen = models.FloatField()
@@ -255,6 +255,30 @@ class ACMunicipality(AdminRegion):
 
     class Meta:
         verbose_name = "Allegheny County Municipality"
+        verbose_name_plural = "Allegheny County Municipalities"
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        _type = RegionType.objects.get(id='allegheny_county_municipality')
+        self.type=_type
+        self.title = self.label
+        self.name=slugify(self.title).replace('-', '_')
+        super(ACMunicipality, self).save(*args, **kwargs)
+
+class BlockGroup(AdminRegion):
+    geo_id = models.IntegerField()
+    affgeoid = models.CharField(max_length=80)
+    state = models.CharField(max_length=80)
+    county = models.CharField(max_length=80)
+    tract = models.CharField(max_length=80)
+    block_grp = models.CharField(max_length=80)
+    cog = models.CharField(max_length=80)
+
+
+    class Meta:
+        verbose_name = "Census Block Group"
         verbose_name_plural = "Allegheny County Municipalities"
 
     def __str__(self):

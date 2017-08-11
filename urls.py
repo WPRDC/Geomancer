@@ -2,6 +2,9 @@ from django.conf.urls import url
 
 from . import views
 
+# REGEX FOR COORDINATE STRING: (?P<coord_string>(\-?\d+(\.\d+)?),\s*(\-?\d+(\.\d+)?))
+
+
 urlpatterns = [
     url(r'^$', views.index, name='index'),
 
@@ -10,5 +13,5 @@ urlpatterns = [
     url(r'^regions/$', views.region_types, name='regions_types'),
     url(r'^regions/(?P<region_type>[\w-]+)/$', views.regions, name='regions'),
 
-    url(r'^reverse_geocode/(?P<coord_string>(\-?\d+(\.\d+)?),\s*(\-?\d+(\.\d+)?))/$', views.reverse_geocode, name='reverse_geocode'),
+    url(r'^reverse_geocode/$', views.reverse_geocode, name='reverse_geocode'),
 ]
