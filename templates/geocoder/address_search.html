@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script
+            src="https://code.jquery.com/jquery-2.2.4.min.js"
+            integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+            crossorigin="anonymous"></script>
+</head>
+<body>
+
+
+<h1>Search Addresses</h1>
+    <label>
+        Address:
+        <input id="name" type="text" name="addr">
+    </label>
+    <button  id="submit-addr">Search</button>
+
+<pre id="response"></pre>
+</body>
+<script>
+    function syntaxHighlight(json) {
+    if (typeof json != 'string') {
+         json = JSON.stringify(json, undefined, 2);
+    }
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        var cls = 'number';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = 'key';
+            } else {
+                cls = 'string';
+            }
+        } else if (/true|false/.test(match)) {
+            cls = 'boolean';
+        } else if (/null/.test(match)) {
+            cls = 'null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
+}
+
+
+    $('#submit-addr').on('click', function () {
+        var url      = window.location.href
+        var addr = $('#name').val();
+        $.get('http://127.0.0.1:8000/geoservice/geocode/', {'addr': addr})
+            .done(function (data) {
+                var str = JSON.stringify(data, null, 2);
+                $('#response').text(str);
+            })
+            .always(function(){
+                console.log("woot");
+            })
+    })
+</script>
+
+
+</html>
