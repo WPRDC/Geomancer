@@ -14,4 +14,7 @@ urlpatterns = [
     url(r'^regions/(?P<region_type>[\w-]+)/$', views.regions, name='regions'),
 
     url(r'^reverse_geocode/$', views.reverse_geocode, name='reverse_geocode'),
+    url(r'^geocode/$', views.geocode, name='geocode'),
+    url(r'^address_search/$', views.address_search, name='addr_search')
+
 ]

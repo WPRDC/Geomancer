@@ -39,10 +39,19 @@ class AdminRegion(models.Model):
 class Parcel(models.Model):
     objectid = models.BigIntegerField()
     pin = models.CharField(db_index=True, max_length=80)
-    mapblocklo = models.CharField(max_length=80)
+    mapblocklot = models.CharField(max_length=80)
     shapearea = models.FloatField()
     shapelen = models.FloatField()
     geom = models.MultiPolygonField(srid=4326)
+
+
+    addr_number = models.CharField('address number', max_length=20)
+    addr_fraction = models.CharField('address fraction',max_length=20)
+    addr_street = models.CharField('address street',max_length=40)
+    addr_city = models.CharField('address city',max_length=40)
+    addr_state = models.CharField('address state',max_length=20)
+    addr_unit = models.CharField('address unit',max_length=20)
+    addr_zip = models.CharField('address zip',max_length=5)
 
     def __str__(self):
         return self.pin
@@ -268,26 +277,28 @@ class ACMunicipality(AdminRegion):
         super(ACMunicipality, self).save(*args, **kwargs)
 
 class BlockGroup(AdminRegion):
-    geo_id = models.IntegerField()
+    geo_id = models.CharField(max_length=20)
     affgeoid = models.CharField(max_length=80)
     state = models.CharField(max_length=80)
     county = models.CharField(max_length=80)
     tract = models.CharField(max_length=80)
     block_grp = models.CharField(max_length=80)
-    cog = models.CharField(max_length=80)
 
 
     class Meta:
         verbose_name = "Census Block Group"
-        verbose_name_plural = "Allegheny County Municipalities"
+        verbose_name_plural = "Census Block Groups"
 
     def __str__(self):
         return self.title
 
     def save(self, *args, **kwargs):
-        _type = RegionType.objects.get(id='allegheny_county_municipality')
+        _type = RegionType.objects.get(id='us_block_group')
         self.type=_type
-        self.title = self.label
+        self.title = self.state + self.county + self.tract + self.block_grp
         self.name=slugify(self.title).replace('-', '_')
-        super(ACMunicipality, self).save(*args, **kwargs)
+        super(BlockGroup, self).save(*args, **kwargs)
 
+class GeocodeSearch(models.Model):
+    query_string = models.CharField(max_length=200)
+    result_pin = models.CharField(max_length=16)

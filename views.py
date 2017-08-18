@@ -9,7 +9,7 @@ from collections import OrderedDict
 import json
 
 from .models import *
-from .util import parse_options, parse_coord_string
+from .util import parse_options, parse_coord_string, parse_address_string
 
 BASE_RESPONSE = OrderedDict(
     (
@@ -196,5 +196,16 @@ def reverse_geocode(request):
 
     return JsonResponse(response, status=status)
 
+def geocode(request):
+    addr = request.GET['addr']
+    parcels = parse_address_string(addr)
+    response = {'data': {}}
+    for parcel  in parcels:
+        pin = parcel.pin
+        regions = AdminRegion.objects.filter(geom__contains=parcel.geom.centroid)
+        response['data'][pin] = {region.type.id: {'id': region.name, 'name': region.title} for region in regions}
 
+    return JsonResponse(response, status=200)
 
+def address_search(request):
+     return render(request, 'geocoder/address_search.html')

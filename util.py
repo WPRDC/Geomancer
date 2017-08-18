@@ -1,7 +1,11 @@
 import psycopg2
 import psycopg2.extras
 
+import usaddress
+
 import json
+
+from .models import Parcel
 
 AVAILABLE_METHODS = ('download',)
 AVAILABLE_FORMATS = ('json', 'geojson',)
@@ -65,3 +69,32 @@ def parse_options(get_params, available_formats=AVAILABLE_FORMATS, available_met
 def parse_coord_string(coord_string):
     x, y = coord_string.split(',')
     return float(x), float(y)
+
+def parse_address_string(addr_str):
+    address_parts, address_type = usaddress.tag(addr_str)
+
+    # Get just first letter of Directional e.g. S from South Craig
+    if 'StreetNamePreDirectional' in address_parts:
+        directional = address_parts['StreetNamePreDirectional'][0] + ' '
+    else:
+        directional = ''
+
+    number = address_parts.get('AddressNumber', '').upper()
+    street = directional +  address_parts.get('StreetName', '').upper()
+    street_type = address_parts.get('StreetNamePostType', '').upper()
+    city = address_parts.get('PlaceName', '').upper()
+    state = address_parts.get('StateName', '').upper()
+    zip = address_parts.get('ZipCode','').upper()
+
+
+
+    if address_type == 'Street Address':
+        parcels = Parcel.objects.filter(
+            addr_number=number,
+            addr_street__startswith=street,
+            addr_zip__contains=zip
+        )
+        return parcels
+
+    else:
+        return []
