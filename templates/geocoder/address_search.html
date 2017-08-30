@@ -12,47 +12,61 @@
 
 
 <h1>Search Addresses</h1>
-    <label>
-        Address:
-        <input id="name" type="text" name="addr">
-    </label>
-    <button  id="submit-addr">Search</button>
+<label>
+    Address:
+    <input id="name" type="text" name="addr">
+</label>
+<button id="submit-addr">Search</button>
 
 <pre id="response"></pre>
+<br>
+<h1>Geocode a Table of Addresses</h1>
+<form id="file-upload" action="{% url "file_upload" %}" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ upload_form.file }}
+    <br>
+    <br>
+    <span>Address Field: </span>
+    {{ upload_form.address_field }}
+    <br>
+    <input class="button text-center" type="submit" value="Submit"/>
+</form>
+
+
 </body>
 <script>
     function syntaxHighlight(json) {
-    if (typeof json != 'string') {
-         json = JSON.stringify(json, undefined, 2);
-    }
-    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
-        var cls = 'number';
-        if (/^"/.test(match)) {
-            if (/:$/.test(match)) {
-                cls = 'key';
-            } else {
-                cls = 'string';
-            }
-        } else if (/true|false/.test(match)) {
-            cls = 'boolean';
-        } else if (/null/.test(match)) {
-            cls = 'null';
+        if (typeof json != 'string') {
+            json = JSON.stringify(json, undefined, 2);
         }
-        return '<span class="' + cls + '">' + match + '</span>';
-    });
-}
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            var cls = 'number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'key';
+                } else {
+                    cls = 'string';
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'boolean';
+            } else if (/null/.test(match)) {
+                cls = 'null';
+            }
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
 
 
     $('#submit-addr').on('click', function () {
-        var url      = window.location.href
+        var url = window.location.href
         var addr = $('#name').val();
         $.get('http://127.0.0.1:8000/geoservice/geocode/', {'addr': addr})
             .done(function (data) {
                 var str = JSON.stringify(data, null, 2);
                 $('#response').text(str);
             })
-            .always(function(){
+            .always(function () {
                 console.log("woot");
             })
     })

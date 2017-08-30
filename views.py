@@ -6,10 +6,14 @@ from django.forms.models import model_to_dict
 
 from wprdc_tools import settings
 from collections import OrderedDict
+
 import json
+import csv
 
 from .models import *
-from .util import parse_options, parse_coord_string, parse_address_string
+from .util import parse_options, parse_coord_string, parse_address_string, geocode_file, geocode_from_address_string, forward_geocode
+from .forms import GeoserviceFileForm
+
 
 BASE_RESPONSE = OrderedDict(
     (
@@ -198,14 +202,36 @@ def reverse_geocode(request):
 
 def geocode(request):
     addr = request.GET['addr']
-    parcels = parse_address_string(addr)
     response = {'data': {}}
-    for parcel  in parcels:
-        pin = parcel.pin
-        regions = AdminRegion.objects.filter(geom__contains=parcel.geom.centroid)
-        response['data'][pin] = {region.type.id: {'id': region.name, 'name': region.title} for region in regions}
+
+    response['data'] = forward_geocode(addr)
 
     return JsonResponse(response, status=200)
 
 def address_search(request):
-     return render(request, 'geocoder/address_search.html')
+    upload_form = GeoserviceFileForm
+    return render(request, 'geocoder/address_search.html', {'upload_form': upload_form})
+
+
+def upload_file(request):
+    if request.method == 'POST':
+        form = GeoserviceFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            stuff = form.save()
+            file = stuff.file
+            new_data, fields = geocode_file(stuff.file.url, stuff.address_field)
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="geocoded_data.csv"'
+
+            writer = csv.DictWriter(response, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(new_data)
+
+            return response
+        else:
+            return JsonResponse({'status': 'not OK'})
+
+    else:
+        return JsonResponse({'status':'not OK'})
+
+

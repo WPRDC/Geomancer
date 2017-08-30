@@ -25,6 +25,7 @@ class RegionType(models.Model):
     def __str__(self):
         return self.id
 
+
 class AdminRegion(models.Model):
     '''
     Abstract base class for Administrative Regions (e.g. neighborhoods, municipalities, police zones).  
@@ -44,18 +45,16 @@ class Parcel(models.Model):
     shapelen = models.FloatField()
     geom = models.MultiPolygonField(srid=4326)
 
-
     addr_number = models.CharField('address number', max_length=20)
-    addr_fraction = models.CharField('address fraction',max_length=20)
-    addr_street = models.CharField('address street',max_length=40)
-    addr_city = models.CharField('address city',max_length=40)
-    addr_state = models.CharField('address state',max_length=20)
-    addr_unit = models.CharField('address unit',max_length=20)
-    addr_zip = models.CharField('address zip',max_length=5)
+    addr_fraction = models.CharField('address fraction', max_length=20)
+    addr_street = models.CharField('address street', max_length=40)
+    addr_city = models.CharField('address city', max_length=40)
+    addr_state = models.CharField('address state', max_length=20)
+    addr_unit = models.CharField('address unit', max_length=20)
+    addr_zip = models.CharField('address zip', max_length=5)
 
     def __str__(self):
         return self.pin
-
 
 
 class PghHood(AdminRegion):
@@ -103,9 +102,9 @@ class PghHood(AdminRegion):
 
     def save(self, *args, **kwargs):
         _type = RegionType.objects.get(id='pittsburgh_neighborhood')
-        self.type=_type
+        self.type = _type
         self.title = self.hood
-        self.name=slugify(self.title).replace('-', '_')
+        self.name = slugify(self.title).replace('-', '_')
         super(PghHood, self).save(*args, **kwargs)
 
 
@@ -130,10 +129,11 @@ class PghFireZone(AdminRegion):
 
     def save(self, *args, **kwargs):
         _type = RegionType.objects.get(id='pittsburgh_fire_zone')
-        self.type=_type
+        self.type = _type
         self.title = self.dist_zone
-        self.name=slugify(self.title).replace('-', '_')
+        self.name = slugify(self.title).replace('-', '_')
         super(PghFireZone, self).save(*args, **kwargs)
+
 
 class PghPoliceZone(AdminRegion):
     objectid = models.BigIntegerField()
@@ -143,15 +143,14 @@ class PghPoliceZone(AdminRegion):
     class Meta:
         verbose_name = "Pittsburgh Police Zone"
 
-
     def __str__(self):
         return self.title
 
     def save(self, *args, **kwargs):
         _type = RegionType.objects.get(id='pittsburgh_police_zone')
-        self.type=_type
+        self.type = _type
         self.title = str(self.zone)
-        self.name=slugify(self.title).replace('-', '_')
+        self.name = slugify(self.title).replace('-', '_')
         super(PghPoliceZone, self).save(*args, **kwargs)
 
 
@@ -171,18 +170,17 @@ class PghWard(AdminRegion):
     shape_area = models.FloatField()
 
     class Meta:
-        verbose_name =  'Pittsburgh Ward'
+        verbose_name = 'Pittsburgh Ward'
 
     def __str__(self):
         return self.title
 
     def save(self, *args, **kwargs):
         _type = RegionType.objects.get(id='pittsburgh_ward')
-        self.type=_type
+        self.type = _type
         self.title = str(self.ward)
-        self.name=slugify(self.title).replace('-', '_')
+        self.name = slugify(self.title).replace('-', '_')
         super(PghWard, self).save(*args, **kwargs)
-
 
 
 class PghCityCouncil(AdminRegion):
@@ -204,13 +202,10 @@ class PghCityCouncil(AdminRegion):
 
     def save(self, *args, **kwargs):
         _type = RegionType.objects.get(id='pittsburgh_city_council')
-        self.type=_type
+        self.type = _type
         self.title = str(self.council)
-        self.name=slugify(self.title).replace('-', '_')
+        self.name = slugify(self.title).replace('-', '_')
         super(PghCityCouncil, self).save(*args, **kwargs)
-
-
-
 
 
 class PghPublicWorks(AdminRegion):
@@ -235,9 +230,9 @@ class PghPublicWorks(AdminRegion):
 
     def save(self, *args, **kwargs):
         _type = RegionType.objects.get(id='pittsburgh_dpw_division')
-        self.type=_type
+        self.type = _type
         self.title = str(self.division)
-        self.name=slugify(self.title).replace('-', '_')
+        self.name = slugify(self.title).replace('-', '_')
         super(PghPublicWorks, self).save(*args, **kwargs)
 
 
@@ -271,10 +266,11 @@ class ACMunicipality(AdminRegion):
 
     def save(self, *args, **kwargs):
         _type = RegionType.objects.get(id='allegheny_county_municipality')
-        self.type=_type
+        self.type = _type
         self.title = self.label
-        self.name=slugify(self.title).replace('-', '_')
+        self.name = slugify(self.title).replace('-', '_')
         super(ACMunicipality, self).save(*args, **kwargs)
+
 
 class BlockGroup(AdminRegion):
     geo_id = models.CharField(max_length=20)
@@ -283,7 +279,6 @@ class BlockGroup(AdminRegion):
     county = models.CharField(max_length=80)
     tract = models.CharField(max_length=80)
     block_grp = models.CharField(max_length=80)
-
 
     class Meta:
         verbose_name = "Census Block Group"
@@ -294,11 +289,55 @@ class BlockGroup(AdminRegion):
 
     def save(self, *args, **kwargs):
         _type = RegionType.objects.get(id='us_block_group')
-        self.type=_type
+        self.type = _type
         self.title = self.state + self.county + self.tract + self.block_grp
-        self.name=slugify(self.title).replace('-', '_')
+        self.name = slugify(self.title).replace('-', '_')
         super(BlockGroup, self).save(*args, **kwargs)
+
 
 class GeocodeSearch(models.Model):
     query_string = models.CharField(max_length=200)
     result_pin = models.CharField(max_length=16)
+
+
+class BatchGeocodeFile(models.Model):
+    file = models.FileField(upload_to="geoservice/")
+    address_field = models.CharField(max_length=50)
+
+
+class AddressPoint(models.Model):
+    object_id = models.IntegerField()
+    address_id = models.IntegerField()
+    street_id = models.IntegerField()
+    dup_street_id = models.IntegerField()
+    address_type = models.IntegerField()
+    full_address = models.CharField(max_length=60)
+
+    address_number = models.CharField(max_length=60)
+    address_number_suffix = models.CharField(max_length=60)         # letters and fractions
+
+    street_prefix = models.CharField(max_length=60)                 # directional initial (N, S, E, W)
+    street_name = models.CharField(max_length=60)
+    street_type = models.CharField(max_length=60)
+
+    unit = models.CharField(max_length=60)
+    unit_type = models.CharField(max_length=60)                     # SUITE, FLR, LOT
+    floor = models.CharField(max_length=60)
+
+    municipality = models.CharField('administrative region', max_length=60)
+    city = models.CharField('city used in address', max_length=60)
+    county = models.CharField(max_length=60)
+    state = models.CharField(max_length=60)
+
+    zip_code = models.CharField(max_length=5)
+    zip_code_four = models.CharField(max_length=4)
+
+    comment = models.CharField(max_length=300)
+    edit_date = models.CharField(max_length=30)
+    source = models.CharField(max_length=60)
+    geom = models.PointField()
+
+    address_number_prefix = models.CharField(max_length=60)  # not used
+    street_premodifier = models.CharField(max_length=60)  # not used
+    street_pretype = models.CharField(max_length=60)  # not used
+    street_postmodifier = models.CharField(max_length=60)  # not used

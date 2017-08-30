@@ -1,7 +1,8 @@
 from django.contrib.gis import admin
-from .models import RegionType, PghCityCouncil, PghPublicWorks, PghPoliceZone,PghHood, PghFireZone, Parcel, ACMunicipality, BlockGroup
+from .models import RegionType, PghCityCouncil, PghPublicWorks, PghPoliceZone,PghHood, PghFireZone, Parcel, ACMunicipality, BlockGroup, AddressPoint
 
 admin.site.register(Parcel, admin.GeoModelAdmin)
+admin.site.register(AddressPoint, admin.GeoModelAdmin)
 admin.site.register(PghHood, admin.GeoModelAdmin)
 #admin.site.register(PghWard, admin.GeoModelAdmin)
 admin.site.register(PghCityCouncil, admin.GeoModelAdmin)
