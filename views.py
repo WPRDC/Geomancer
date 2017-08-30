@@ -88,6 +88,36 @@ def region_types(request):
     return (JsonResponse(response, status=status))
 
 
+def parcels_in_old(request, region_type="", region_name=""):
+    '''
+
+    :param request: 
+    :param region_type: 
+    :param region_name: 
+    :return: 
+    '''
+    download = False  # flag to set to server results as file download
+    response = BASE_RESPONSE
+    print('parcels in old')
+
+    if 'format' in request.GET:
+        if request.GET['format'] == 'file':
+            download = True
+
+    try:
+        region = AdminRegion.objects.filter(type=region_type, name=region_name)[0]
+        parcels = Parcel.objects.filter(geom__intersects=region.geom)
+        shp = serialize('geojson', parcels, geometry_field='geom')
+        if (download):
+            response = HttpResponse(shp, content_type='application/force-download')
+            response['Content-Disposition'] = 'attachment; filename=%s.geojson' % region_name
+            response.write(shp)
+            return response
+        else:
+            return JsonResponse(json.loads(shp))
+    except:
+        return JsonResponse(response, status=400)
+
 def parcels_in(request, region_type="", region_name=""):
     '''
     
@@ -98,7 +128,7 @@ def parcels_in(request, region_type="", region_name=""):
     '''
     # Set result format
     fmt, mthd = parse_options(request.GET)
-
+    print(fmt, mthd)
     try:
         # Find region and filter parcels within that region
         region = AdminRegion.objects.filter(type=region_type, name=region_name)[0]
