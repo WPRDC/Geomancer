@@ -2,16 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>WPRDC Geocoder (alpha)</title>
     <script
             src="https://code.jquery.com/jquery-2.2.4.min.js"
             integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
             crossorigin="anonymous"></script>
 </head>
 <body>
+<h1>WPRDC Geocoder (alpha)</h1> 
 
 
-<h1>Search Addresses</h1>
+<h2>Search Addresses</h1>
 <label>
     Address:
     <input id="name" type="text" name="addr">
@@ -20,7 +21,7 @@
 
 <pre id="response"></pre>
 <br>
-<h1>Geocode a Table of Addresses</h1>
+<h2>Geocode a Table of Addresses</h1>
 <form id="file-upload" action="{% url "file_upload" %}" method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ upload_form.file }}
@@ -28,6 +29,7 @@
     <br>
     <span>Address Field: </span>
     {{ upload_form.address_field }}
+<span><i>Column heading under which the full address is stored</i></span>
     <br>
     <input class="button text-center" type="submit" value="Submit"/>
 </form>
@@ -61,7 +63,7 @@
     $('#submit-addr').on('click', function () {
         var url = window.location.href
         var addr = $('#name').val();
-        $.get('http://127.0.0.1:8000/geoservice/geocode/', {'addr': addr})
+        $.get('http://tools.wprdc.org/geo/geocode/', {'addr': addr})
             .done(function (data) {
                 var str = JSON.stringify(data, null, 2);
                 $('#response').text(str);
