@@ -10,6 +10,9 @@ import csv
 from wprdc_tools import settings
 from .models import Parcel, AdminRegion, AddressPoint
 
+from django.contrib.gis.measure import D
+from django.contrib.gis.db.models.functions import Distance
+
 AVAILABLE_METHODS = ('download',)
 AVAILABLE_FORMATS = ('json', 'geojson',)
 
@@ -118,7 +121,6 @@ def geocode_from_address_parts(addr_parts):
 
 
 def geocode_from_address_string(addr_str):
-
     return geocode_from_address_parts(parse_address_string(addr_str))
 
 
@@ -189,7 +191,7 @@ def geocode_file(input_file, address_field):
                 else:
                     coords = []
 
-                regions = {k: v['name'] for k,v in geo_data['regions'].items()}
+                regions = {k: v['name'] for k, v in geo_data['regions'].items()}
 
                 new_row = {**regions,
                            **{'parcel_id': geo_data['parcel_id'], 'coordinates': coords}}
@@ -273,7 +275,7 @@ def forward_geocode(address):
     :param address: 
     :return: 
     """
-    result = OD([('geom',{}), ('parcel_id',''), ('regions', {}), ('status','ERROR')])
+    result = OD([('geom', {}), ('parcel_id', ''), ('regions', {}), ('status', 'ERROR')])
     try:
         # get point
         point = geocode_from_address_string(address)
@@ -286,9 +288,16 @@ def forward_geocode(address):
         result['status'] = 'WARNING: Only found point of address and regions'
 
         # get parcel
-        parcel = Parcel.objects.filter(geom__contains=point)[0]
+        parcels = Parcel.objects.filter(geom__contains=point)
+        if not parcels:
+            close_parcels = Parcel.objects.filter(geom__dwithin=(point, 0.0002))
+            ordered_parcels = sorted(close_parcels.annotate(distance=Distance('geom', point)), key=lambda obj_:obj_.distance)
+            parcel = ordered_parcels[0]
+            result['status'] = 'WARNING: using closed parcel to address point.'
+        else:
+            parcel = parcels[0]
+            result['status'] = 'OK'
         result['parcel_id'] = parcel.pin
-        result['status'] = 'OK'
 
     finally:
         return result
