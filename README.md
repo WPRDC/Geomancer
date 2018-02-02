@@ -74,7 +74,6 @@ Maps a street address to latitude and longitude.
 
 #### Required Paramaters
 * `addr` - address to geocode (required)
-* 
 #### Example
 `GET .../geocode?addr=3343 Forbes Ave Pittsburgh PA 15213`
 ```json
