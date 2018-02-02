@@ -2,11 +2,248 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>WPRDC Geocoder</title>
+    <title>WPRDC Geomancer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.css"/>
 </head>
 <body>
-<h1>WPRDC Geocoder Thingy</h1>
-<p>More to come...</p>
+<h1 id="geomancerv01">Geomancer v0.1</h1>
+
+<p><a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg"
+                                                      alt="License: MIT"/></a></p>
+
+<p>A set of GIS services for geographical data hosted on the <a href="https://wprdc.org">Western Pennsylvania Regional
+    Data Center</a>. <br/>
+    You can find the code <a href="https://github.com/WPRDC/Geomancer">here</a>.</p>
+
+<h2 id="services">Services</h2>
+
+<ol>
+    <li><a href="#regions">Regions</a></li>
+
+    <li><a href="#geocoder">Geocoder</a></li>
+
+    <li><a href="#reverse-geocoder">Reverse Geocoder</a></li>
+
+    <li><a href="#parcels-in">Parcels-in</a></li>
+</ol>
+
+<h3 id="regionsregionsregionsregion_type">Regions <code>/regions/</code> <code>/regions/&lt;region_type&gt;</code></h3>
+
+<p>Lists administrative region types and regions. If no <code>region_type</code> is provided, a list of <code>region_type</code>s
+    will be returned.</p>
+
+<h4 id="example">Example</h4>
+
+<p><code>GET https://tools.wprdc.org/geo/regions/</code></p>
+
+<pre><code class="json language-json">{
+  "help": "",
+  "results": [
+    {
+      "name": "Pittsburgh Ward",
+      "id": "pittsburgh_ward",
+      "description": "Pittsburgh wards"
+    },
+    {
+      "name": "Pittsburgh Police Zone",
+      "id": "pittsburgh_police_zone",
+      "description": "police zones in Pittsburgh"
+    },
+    {
+      "name": "Pittsburgh Neighborhood",
+      "id": "pittsburgh_neighborhood",
+      "description": "Neighborhoods in Pittsburgh"
+    }
+    //...
+  ],
+  "status": "OK"
+}
+</code></pre>
+
+<p><code>GET https://tools.wprdc.org/geo/regions/pittsburgh_neighborhood</code></p>
+
+<pre><code class="json language-json">{
+  "help": "",
+  "results": [
+    {
+      "name": "Beltzhoover",
+      "id": "beltzhoover"
+    },
+    {
+      "name": "South Side Flats",
+      "id": "south_side_flats"
+    },
+    {
+      "name": "Allentown",
+      "id": "allentown"
+    },
+    {
+      "name": "Mount Washington",
+      "id": "mount_washington"
+    }
+    //...
+  ],
+  "status": "OK"
+}
+</code></pre>
+
+<h3 id="geocoder">Geocoder</h3>
+
+<p>Maps a street address to latitude and longitude.</p>
+
+<h4 id="requiredparamaters">Required Paramaters</h4>
+
+<ul>
+    <li><code>addr</code> - address to geocode (required)</li>
+    *
+</ul>
+
+<h4 id="example-1">Example</h4>
+
+<p><code>GET https://tools.wprdc.org/geo/geocode?addr=3343 Forbes Ave Pittsburgh PA 15213</code></p>
+
+<pre><code class="json language-json">{
+  "data": {
+    "geom": {
+      "coordinates": [
+        -79.9618888879302,
+        40.438345724999
+      ],
+      "type": "Point"
+    },
+    "parcel_id": "0028F00193000000",
+    "regions": {
+      "pittsburgh_ward": {
+        "name": "4",
+        "id": "4"
+      },
+      "allegheny_county_municipality": {
+        "name": "Pittsburgh",
+        "id": "pittsburgh"
+      },
+      "pittsburgh_fire_zone": {
+        "name": "2-14",
+        "id": "2_14"
+      },
+      "pittsburgh_police_zone": {
+        "name": "4",
+        "id": "4"
+      },
+      "pittsburgh_dpw_division": {
+        "name": "3",
+        "id": "3"
+      },
+      "pittsburgh_neighborhood": {
+        "name": "South Oakland",
+        "id": "south_oakland"
+      },
+      "us_block_group": {
+        "name": "420030409001",
+        "id": "420030409001"
+      },
+      "pittsburgh_city_council": {
+        "name": "6",
+        "id": "6"
+      }
+    },
+    "status": "OK"
+  }
+}
+</code></pre>
+
+<p>`</p>
+
+<h3 id="reversegeocoder">Reverse Geocoder</h3>
+
+<h4 id="requiredparameters">Required Parameters</h4>
+
+<ul>
+    <li><code>lat</code> - latitude of target location</li>
+
+    <li><code>lng</code> - longitude of target location <br/>
+        <em>OR</em></li>
+
+    <li><code>pin</code> - parcel ID of target parcel</li>
+</ul>
+
+<h4 id="optionparameters">Option Parameters</h4>
+
+<ul>
+    <li><code>srid</code> - <a href="https://en.wikipedia.org/wiki/Spatial_reference_system">Spatial Reference System
+        Identifier</a> - default: <code>4326</code></li>
+
+    <li><code>regions_list</code> - list of <code>region_type</code>s for limiting results. (available
+        <code>region_type</code>s can be found using <a href="#regions"><code>Regions</code></a> endpoint.
+    </li>
+</ul>
+
+<h4 id="example-2">Example</h4>
+
+<p><code>GET https://tools.wprdc.org/geo/reverse_geocode/?lat=40.44301069&amp;lng=-80.00475374</code></p>
+
+<pre><code class="json language-json">{
+  "status": "OK",
+  "help": "",
+  "results": {
+    "pittsburgh_dpw_division": {
+      "id": "6",
+      "name": "6"
+    },
+    "pittsburgh_fire_zone": {
+      "id": "1_3",
+      "name": "1-3"
+    },
+    "pittsburgh_ward": {
+      "id": "2",
+      "name": "2"
+    },
+    "pittsburgh_neighborhood": {
+      "id": "central_business_district",
+      "name": "Central Business District"
+    },
+    "us_block_group": {
+      "id": "420030201002",
+      "name": "420030201002"
+    },
+    "pittsburgh_police_zone": {
+      "id": "2",
+      "name": "2"
+    },
+    "pittsburgh_city_council": {
+      "id": "6",
+      "name": "6"
+    },
+    "allegheny_county_municipality": {
+      "id": "pittsburgh",
+      "name": "Pittsburgh"
+    }
+  }
+}
+</code></pre>
+
+<h3 id="parcelsinparcelsinregion_typeregion_id">Parcels-in
+    <code>/parcels-in/&lt;region_type&gt;/&lt;region_id&gt;</code></h3>
+
+<p>Returns a list of parcel IDs for parcels that fall within the requested region.</p>
+
+<h4 id="example-3">Example</h4>
+
+<p><code>GET https://tools.wprdc.org/geo/parcels-in/pittsburgh_ward/1/</code></p>
+
+<pre><code class="json language-json">{
+  "help": "",
+  "results": [
+    "0002M00211000C00",
+    "0002M00214000B00",
+    "0011J00091000000",
+    "0011J00154000000",
+    "0001M00018000000",
+    "0002M00070000000"
+    //...
+  ],
+  "status": "OK"
+}
+</code></pre>
 
 </body>
 </html>
