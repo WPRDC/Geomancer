@@ -14,6 +14,8 @@ Regions:
     * City Ward
     * City Council
 
+    * Census Block Group
+    * Census Tracts
 '''
 
 
@@ -290,9 +292,31 @@ class BlockGroup(AdminRegion):
     def save(self, *args, **kwargs):
         _type = RegionType.objects.get(id='us_block_group')
         self.type = _type
-        self.title = self.state + self.county + self.tract + self.block_grp
+        self.title = self.state + self.county + self.tract
         self.name = slugify(self.title).replace('-', '_')
         super(BlockGroup, self).save(*args, **kwargs)
+
+
+class CensusTract(AdminRegion):
+    geo_id = models.CharField(max_length=20)
+    state = models.CharField(max_length=20)
+    county = models.CharField(max_length=20)
+    tract = models.CharField(max_length=20)
+    lsad = models.CharField(max_length=20)
+
+    class Meta:
+        verbose_name = "Census Tract"
+        verbose_name_plural = "Census Tracts"
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        _type = RegionType.objects.get(id='us_census_tract')
+        self.type = _type
+        self.title = self.state + self.county + self.tract
+        self.name = slugify(self.title).replace('-', '_')
+        super(CensusTract, self).save(*args, **kwargs)
 
 
 class GeocodeSearch(models.Model):
