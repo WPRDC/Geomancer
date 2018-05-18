@@ -151,19 +151,18 @@ MODEL_MAPPING = {
             "geom": "MULTIPOLYGON"
         }
     },
-    # "block_group": {
-    #     "source": "block_groups/cb_2016_42_bg_500k.shp",
-    #     "model": "BlockGroup",
-    #     "source_srs": 4269,
-    #     "mapping": {
-    #         "fid": "FID",
-    #         "state": "STATEFP",
-    #         "county": "COUNTYFP",
-    #         "tract": "TRACTCE",
-    #         "block_grp": "BLKGRPCE",
-    #         "geom": "MULTIPOLYGON"
-    #     }
-    # },
+    "block_group": {
+        "source": "block_groups/Allegheny_County_Census_Block_Groups_2016.shp",
+        "model": "BlockGroup",
+        "mapping": {
+            "fid": "FID",
+            "state": "STATEFP",
+            "county": "COUNTYFP",
+            "tract": "TRACTCE",
+            "block_grp": "BLKGRPCE",
+            "geom": "MULTIPOLYGON"
+        }
+    },
     "census_tract": {
         "source": "census_tracts/Allegheny_County_Census_Tracts_2016.shp",
         "model": "CensusTract",
@@ -173,6 +172,27 @@ MODEL_MAPPING = {
             "county": "COUNTYFP",
             "tract": "TRACTCE",
             "lsad": "LSAD",
+            "geom": "MULTIPOLYGON"
+        }
+    },
+    "census_block": {
+        "source": "census_blocks/Allegheny_County_Census_Blocks_2016.shp",
+        "model": "CensusBlock",
+        "mapping": {
+            "fid": "FID",
+            "state": "STATEFP10",
+            "county": "COUNTYFP10",
+            "tract": "TRACTCE10",
+            "block": "BLOCKCE10",
+            "geom": "MULTIPOLYGON"
+        }
+    },
+    "school_district": {
+        "source": "school_dist/Allegheny_County_School_District_Boundaries.shp",
+        "model": "SchoolDistrict",
+        "mapping": {
+            "object_id": "OBJECTID",
+            "district_name": "SCHOOLD",
             "geom": "MULTIPOLYGON"
         }
     },

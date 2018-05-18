@@ -30,7 +30,7 @@ class RegionType(models.Model):
 
 class AdminRegion(models.Model):
     '''
-    Abstract base class for Administrative Regions (e.g. neighborhoods, municipalities, police zones).  
+    Abstract base class for Administrative Regions (e.g. neighborhoods, municipalities, police zones).
     '''
     name = models.CharField(max_length=64)
     title = models.CharField(max_length=64)
@@ -275,7 +275,7 @@ class ACMunicipality(AdminRegion):
 
 
 class BlockGroup(AdminRegion):
-    geo_id = models.CharField(max_length=20)
+    fid =  models.IntegerField()
     affgeoid = models.CharField(max_length=80)
     state = models.CharField(max_length=80)
     county = models.CharField(max_length=80)
@@ -292,9 +292,50 @@ class BlockGroup(AdminRegion):
     def save(self, *args, **kwargs):
         _type = RegionType.objects.get(id='us_block_group')
         self.type = _type
-        self.title = self.state + self.county + self.tract
+        self.title = self.state + self.county + self.tract + self.block_grp
         self.name = slugify(self.title).replace('-', '_')
         super(BlockGroup, self).save(*args, **kwargs)
+
+
+class CensusBlock(AdminRegion):
+    fid =  models.IntegerField()
+    state = models.CharField(max_length=80)
+    county = models.CharField(max_length=80)
+    tract = models.CharField(max_length=80)
+    block = models.CharField(max_length=80)
+
+    class Meta:
+        verbose_name = "Census Block"
+        verbose_name_plural = "Census Blocks"
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        _type = RegionType.objects.get(id='us_census_block')
+        self.type = _type
+        self.title = self.state + self.county + self.tract + self.block
+        self.name = slugify(self.title).replace('-', '_')
+        super(CensusBlock, self).save(*args, **kwargs)
+
+
+class SchoolDistrict(AdminRegion):
+    object_id = models.IntegerField()
+    district_name = models.CharField(max_length=80)
+
+    class Meta:
+        verbose_name = "School District"
+        verbose_name_plural = "School Districts"
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        _type = RegionType.objects.get(id='allegheny_county_school_district')
+        self.type = _type
+        self.title = self.district_name
+        self.name = slugify(self.title).replace('-', '_')
+        super(SchoolDistrict, self).save(*args, **kwargs)
 
 
 class CensusTract(AdminRegion):
@@ -338,14 +379,17 @@ class AddressPoint(models.Model):
     full_address = models.CharField(max_length=60)
 
     address_number = models.CharField(max_length=60)
-    address_number_suffix = models.CharField(max_length=60)         # letters and fractions
+    address_number_suffix = models.CharField(
+        max_length=60)         # letters and fractions
 
-    street_prefix = models.CharField(max_length=60)                 # directional initial (N, S, E, W)
+    # directional initial (N, S, E, W)
+    street_prefix = models.CharField(max_length=60)
     street_name = models.CharField(max_length=60)
     street_type = models.CharField(max_length=60)
 
     unit = models.CharField(max_length=60)
-    unit_type = models.CharField(max_length=60)                     # SUITE, FLR, LOT
+    # SUITE, FLR, LOT
+    unit_type = models.CharField(max_length=60)
     floor = models.CharField(max_length=60)
 
     municipality = models.CharField('administrative region', max_length=60)
