@@ -6,9 +6,12 @@ import usaddress
 from collections import OrderedDict as OD
 import json
 import csv
+from django.forms.models import model_to_dict
+from django.contrib.gis.db.models.functions import Scale
+
 
 from wprdc_tools import settings
-from .models import Parcel, AdminRegion, AddressPoint
+from .models import Parcel, AdminRegion, AddressPoint, RegionType
 
 from django.contrib.gis.measure import D
 from django.contrib.gis.db.models.functions import Distance
@@ -40,7 +43,8 @@ SELECT row_to_json(fc)
 def parcels_in_region(region_type, region_name):
     conn = psycopg2.connect("dbname=geo")
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    inner_qry = QRY_TEMPLATE.format(region_table=region_type, region_name=region_name)
+    inner_qry = QRY_TEMPLATE.format(
+        region_table=region_type, region_name=region_name)
     qry = FC_QRY_TEMPLATE.format(inner_query=inner_qry)
     cur.execute(qry)
     stuff = cur.fetchall()[0]
@@ -79,9 +83,9 @@ def parse_coord_string(coord_string):
 
 def parse_address_string(addr_str):
     """
-    Parses address string into constituent parts.  
+    Parses address string into constituent parts.
     Currently uses usaddress (https://github.com/datamade/usaddress)
-    
+
     :param addr_str: address string to be parsed
     :return: dict of address parts
     """
@@ -191,7 +195,8 @@ def geocode_file(input_file, address_field):
                 else:
                     coords = []
 
-                regions = {k: v['name'] for k, v in geo_data['regions'].items()}
+                regions = {k: v['name']
+                           for k, v in geo_data['regions'].items()}
 
                 new_row = {**regions,
                            **{'parcel_id': geo_data['parcel_id'], 'coordinates': coords}}
@@ -271,11 +276,12 @@ def fix_street_type(street_type):
 def forward_geocode(address):
     """
     Looks up geo data pertaining to `address`
-    
-    :param address: 
-    :return: 
+
+    :param address:
+    :return:
     """
-    result = OD([('geom', {}), ('parcel_id', ''), ('regions', {}), ('status', 'ERROR')])
+    result = OD([('geom', {}), ('parcel_id', ''),
+                 ('regions', {}), ('status', 'ERROR')])
     try:
         # get point
         point = geocode_from_address_string(address)
@@ -284,14 +290,17 @@ def forward_geocode(address):
 
         # get regions
         regions = AdminRegion.objects.filter(geom__contains=point)
-        result['regions'] = {region.type.id: {'id': region.name, 'name': region.title} for region in regions}
+        result['regions'] = {region.type.id: {
+            'id': region.name, 'name': region.title} for region in regions}
         result['status'] = 'WARNING: Only found point of address and regions'
 
         # get parcel
         parcels = Parcel.objects.filter(geom__contains=point)
         if not parcels:
-            close_parcels = Parcel.objects.filter(geom__dwithin=(point, 0.0002))
-            ordered_parcels = sorted(close_parcels.annotate(distance=Distance('geom', point)), key=lambda obj_:obj_.distance)
+            close_parcels = Parcel.objects.filter(
+                geom__dwithin=(point, 0.0002))
+            ordered_parcels = sorted(close_parcels.annotate(
+                distance=Distance('geom', point)), key=lambda obj_: obj_.distance)
             parcel = ordered_parcels[0]
             result['status'] = 'WARNING: using closed parcel to address point.'
         else:
@@ -302,26 +311,22 @@ def forward_geocode(address):
     finally:
         return result
 
-# def fix_street_name(street_name):
-#     mapping: = {
-#         'FIRST': "1ST",
-#         'SECOND': "2ND",
-#         'THIRD': "2ND",
-#         'FOURTH': "2ND",
-#         'FIFTH': "2ND",
-#         'SIXTH': "2ND",
-#         'SEVENTH': "2ND",
-#         'EIGHTH': "2ND",
-#         'NINTH': "2ND",
-#         'TENTH': '10TH',
-#         'ELEVENTH': '10TH',
-#         'TWELFTH': '10TH',
-#         'THIRTEENTH': '10TH',
-#         'FOURTEENTH': '10TH',
-#         'FIFTEENTH': '10TH',
-#         'SIXTEENTH': '10TH',
-#         'SEVENTEENTH': '10TH',
-#         'EIGHTEENTH': '10TH',
-#         'NINETEENTH': '10TH',
-#         'TWENTIETH': '20TH'
-#     }
+
+def spatial_query(region_type, region_name, method):
+    BUFFER_BASE = 0.000180063
+    if method in ['intersects', 'contains']:
+        buffer = BUFFER_BASE * -1
+    else:
+        buffer = BUFFER_BASE
+
+    data = {}
+    region = AdminRegion.objects.filter(type=region_type, name=region_name)[0]
+    filter_kwargs = {"geom__{}".format(
+        method): region.geom.buffer(buffer)}
+
+    other_regions = AdminRegion.objects.filter(**filter_kwargs)
+
+    for r in RegionType.objects.all():
+        data[r.id] = [model_to_dict(n, exclude=['geom', 'type'])
+                      for n in other_regions.filter(type=r.id)]
+    return data

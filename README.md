@@ -201,3 +201,23 @@ Returns a list of parcel IDs for parcels that fall within the requested region.
   "status": "OK"
 }
 ```
+### Spatial Query `/spatial-query/<region_type>/<region_id>`  
+Returns a list of parcel IDs for parcels that fall within the requested region.
+
+#### Example
+`GET .../parcels-/pittsburgh_ward/1/`
+```json
+{
+  "help": "",
+  "results": [
+    "0002M00211000C00",
+    "0002M00214000B00",
+    "0011J00091000000",
+    "0011J00154000000",
+    "0001M00018000000",
+    "0002M00070000000"
+    //...
+  ],
+  "status": "OK"
+}
+```

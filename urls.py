@@ -7,6 +7,7 @@ from . import views
 
 api_urls = [
     url(r'^api/v0/parcels_in/(?P<region_type>[\w-]+)/(?P<region_name>[\w-]+)/$', views.parcels_in, name='v0_parcels_in'),
+    url(r'^api/v0/spatial-query/(?P<region_type>[\w-]+)/(?P<region_name>[\w-]+)/$', views.spatial_query_object, name='v0_intersect'),
     url(r'^api/v0/regions/$', views.region_types, name='v0_regions_types'),
     url(r'^api/v0/regions/(?P<region_type>[\w-]+)/$', views.regions, name='v0_regions'),
     url(r'^api/v0/reverse_geocode/$', views.reverse_geocode, name='v0_reverse_geocode'),
@@ -17,6 +18,7 @@ urlpatterns = [
     url(r'^$', views.index, name='index'),
 
     url(r'^parcels_in/(?P<region_type>[\w-]+)/(?P<region_name>[\w-]+)/$', views.parcels_in_old, name='parcels_in_old'),
+    url(r'^api/spatial-query/(?P<region_type>[\w-]+)/(?P<region_name>[\w-]+)/$', views.spatial_query_object, name='v0_intersect'),
 
     url(r'^regions/$', views.region_types, name='regions_types'),
     url(r'^regions/(?P<region_type>[\w-]+)/$', views.regions, name='regions'),
