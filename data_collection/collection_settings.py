@@ -107,21 +107,21 @@ MODEL_MAPPING = {
         }
     },
     "pittsburgh_dpw_division": {
-        "source": "pgh_dpw_division/Pittsburgh_DPW_Divisions.shp",
+        "source": "pgh_dpw_division/PGH_DPWDivisions.shp",
         "model": "PghPublicWorks",
         "mapping": {
             "objectid": "objectid",
-            "pghdbsdedp": "pghdbsdeDP",
+            # "pghdbsdedp": "pghdbsdeDP",
             "perimeter": "perimeter",
             "dpwdivs_field": "dpwdivs_",
             "dpwdivs_id": "dpwdivs_id",
-            "sqmiles": "sqmiles",
-            "acres": "acres",
+            #"sqmiles": "sqmiles",
+            #"acres": "acres",
             "division": "division",
-            "supervsr": "supervsr",
+            #"supervsr": "supervsr",
             "unique_id": "unique_id",
-            "sq_miles": "sq_miles",
-            "dpw_divisi": "dpw_divisi",
+            #"sq_miles": "sq_miles",
+            #"dpw_divisi": "dpw_divisi",
             "geom": "MULTIPOLYGON"
         }
     },

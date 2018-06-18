@@ -212,17 +212,17 @@ class PghCityCouncil(AdminRegion):
 
 class PghPublicWorks(AdminRegion):
     objectid = models.BigIntegerField()
-    pghdbsdedp = models.FloatField()
+    #pghdbsdedp = models.FloatField()
     perimeter = models.FloatField()
     dpwdivs_field = models.BigIntegerField()
     dpwdivs_id = models.BigIntegerField()
-    sqmiles = models.FloatField()
-    acres = models.FloatField()
+    #sqmiles = models.FloatField()
+    #acres = models.FloatField()
     division = models.BigIntegerField()
-    supervsr = models.CharField(max_length=80)
+    #supervsr = models.CharField(max_length=80)
     unique_id = models.BigIntegerField()
-    sq_miles = models.CharField(max_length=80)
-    dpw_divisi = models.CharField(max_length=80)
+    #sq_miles = models.CharField(max_length=80)
+    #dpw_divisi = models.CharField(max_length=80)
 
     class Meta:
         verbose_name = "Pittsburgh DPW Division"
@@ -275,7 +275,7 @@ class ACMunicipality(AdminRegion):
 
 
 class BlockGroup(AdminRegion):
-    fid =  models.IntegerField()
+    fid = models.IntegerField()
     affgeoid = models.CharField(max_length=80)
     state = models.CharField(max_length=80)
     county = models.CharField(max_length=80)
@@ -298,7 +298,7 @@ class BlockGroup(AdminRegion):
 
 
 class CensusBlock(AdminRegion):
-    fid =  models.IntegerField()
+    fid = models.IntegerField()
     state = models.CharField(max_length=80)
     county = models.CharField(max_length=80)
     tract = models.CharField(max_length=80)
@@ -380,7 +380,7 @@ class AddressPoint(models.Model):
 
     address_number = models.CharField(max_length=60)
     address_number_suffix = models.CharField(
-        max_length=60)         # letters and fractions
+        max_length=60)  # letters and fractions
 
     # directional initial (N, S, E, W)
     street_prefix = models.CharField(max_length=60)
