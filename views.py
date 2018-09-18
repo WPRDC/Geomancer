@@ -242,8 +242,8 @@ def reverse_geocode(request):
             status = 200
             if not results.keys():
                 response = {**BASE_RESPONSE, **
-                        {'status': 'ERROR', 'help': 'Location out of range', 'results': None}}
-                status = 400
+                        {'status': 'WARNING', 'help': 'Location out of range', 'results': None}}
+                status = 204
 
     else:
         # Wrong request method
