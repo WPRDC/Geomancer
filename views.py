@@ -237,9 +237,14 @@ def reverse_geocode(request):
 
             results = {region.type.id: {'id': region.name,
                                         'name': region.title} for region in regions}
-            response = {**BASE_RESPONSE, **
-                        {'status': 'OK', 'results': results}}
-            status = 200
+
+            if results.keys():
+                response = {**BASE_RESPONSE, **
+                            {'status': 'OK', 'results': results}}
+                status = 200
+            else:
+                response = {**BASE_RESPONSE, **{'status': 'WARNING', 'help': 'Location is out of bounds.'}}
+
 
     else:
         # Wrong request method
