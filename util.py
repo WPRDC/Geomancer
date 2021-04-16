@@ -306,25 +306,69 @@ def parse_address_string(addr_str):
     })
 
 
-def geocode_from_address_parts(addr_parts):
+def geocode_from_address_parts(addr_parts, disambiguate=False):
     """
     :param addr_parts: dict of address par
-    :return: Point representing location fo address
+    :return: Point representing location of address
     """
 
     # First try to get address point
-    point = geocode_address_point(addr_parts)
+    if disambiguate:
+        point = geocode_address_point_distinguish(addr_parts)
+        print("geocode_address_point_distinguish returned {}.".format(point))
+    else:
+        point = geocode_address_point(addr_parts)
 
     # If that fails, check parcel data
     if not point:
-        point = geocode_parcel_centroid(addr_parts)
-
+        if disambiguate:
+            point = geocode_parcel_centroid_distinguish(addr_parts)
+            print("geocode_parcel_centroid_distinguish returned {}.".format(point))
+        else:
+            point = geocode_parcel_centroid(addr_parts)
     return point
 
+def geocode_from_address_string(addr_str, disambiguate = False):
+    addr_parts = parse_address_string(addr_str)
+    first_attempt = geocode_from_address_parts(addr_parts, disambiguate)
+    print("    * first_attempt = " + str(first_attempt))
+    if first_attempt is not None or not disambiguate:
+        return first_attempt
+    if addr_parts['directional'] in ['N', 'E', 'S', 'W']:
+        # Since the first attempt didn't work, maybe it's one of those
+        # cases where the cardinal direction is spelled out in the street_name
+        # field instead of filed away in the directional field.
+        print("    Trying again with the cardinal direction back in the street name.")
+        addr_parts['street_name'] = cardinal_direction[addr_parts['directional']] + " " + addr_parts['street_name']
+        addr_parts['directional'] = ''
+        second_attempt = geocode_from_address_parts(addr_parts, disambiguate)
+        if second_attempt is not None:
+            return second_attempt
 
-def geocode_from_address_string(addr_str):
-    return geocode_from_address_parts(parse_address_string(addr_str))
+    # Maybe it's a case like 42A WHATEVER STREET, which should be
+    # propertly formatted "42 WHATEVER STREET, APT A".
+    if re.search('^\d+[a-zA-Z]$', addr_parts['number']) is not None:
+        print("        Trying again after splitting off a letter from the address number.")
+        addr_parts['number'] = addr_parts['number'][:-1]
+        # Properly, the apartment designation should also be included somewhere
+        # as it does actually figure in database matches in some cases.
+        third_attempt = geocode_from_address_parts(addr_parts, disambiguate)
+        if third_attempt is not None:
+            return third_attempt
 
+    # Or maybe it's a case like 42 A WHATEVER STREET, in which case
+    # Parserator thinks that street_name == 'A WHATEVER', but it's
+    # actually supposed to be the apartment letter.
+    if re.search('^[A-DF-MO-RT-VX-Z] ', addr_parts['street_name']) is not None:
+        print("            Trying again after splitting off the letter from the beginning of the street name.")
+        addr_parts['street_name'] = re.sub('^[A-DF-MO-RT-VX-Z] ', '', addr_parts['street_name'])
+        # Properly, the apartment designation should also be included somewhere
+        # as it does actually figure in database matches in some cases.
+        fourth_attempt = geocode_from_address_parts(addr_parts, disambiguate)
+        if fourth_attempt is not None:
+            return fourth_attempt
+
+    return first_attempt
 
 def geocode_address_point(addr_parts):
     # first, try with zip
@@ -350,6 +394,73 @@ def geocode_address_point(addr_parts):
     else:
         return None
 
+def try_to_pick_address(candidates):
+    if len(candidates) == 1:
+        return candidates[0].geom
+    if len(candidates) > 1:
+        municipalities = set([a.municipality for a in candidates])
+        if len(municipalities) == 1:
+            print("    Since they all have the same municipality, probably they are just apartments or sufficiently close variants, so return the geom of the first.")
+            return candidates[0].geom
+    return None
+
+def geocode_address_point_distinguish(addr_parts):
+    """A variant of geocode_address_point that tries hard to
+    disambiguate similar results."""
+    # first, try with zip
+    addr = AddressPoint.objects.filter(
+        address_number=addr_parts['number'],
+        street_prefix=addr_parts['directional'],
+        street_name__startswith=addr_parts['street_name'],
+        street_type=addr_parts['street_type'],
+        zip_code=addr_parts['zip_code']
+    )
+    print("    {} addresses found from first attempt.".format(len(addr))) #
+    if len(addr) == 0:
+        pprint(addr_parts)
+
+    if len(addr) == 1:
+        return addr[0].geom
+
+    if len(addr) > 1:
+        # Try to disambiguate by using the 'municipality' field from the table with
+        # the 'city' field from the address.
+        candidates = []
+        for a in addr:
+            print("a.municipality = {}, addr_parts['city'] = {}".format(a.municipality, addr_parts['city']))
+            if a.municipality == addr_parts['city']:
+                candidates.append(a)
+        print("len(candidates) = {}".format(len(candidates)))
+        selection = try_to_pick_address(candidates)
+        if selection is not None:
+            return selection
+        elif len(candidates) == 0:
+            print("This could be an indistinguishable postal city address.") # Why doesn't this get printed?
+
+    # Try again with more lenient city search.
+    addr = AddressPoint.objects.filter(
+        address_number=addr_parts['number'],
+        street_prefix=addr_parts['directional'],
+        street_name__startswith=addr_parts['street_name'],
+        street_type=addr_parts['street_type'],
+        city__startswith=addr_parts['city']
+    )
+    selection = try_to_pick_address(addr)
+    if selection is not None:
+        return selection
+
+    if len(addr) == 0: # Try to handle the case where the street_type is wrong by dropping it from the query.
+        addr = AddressPoint.objects.filter(
+            address_number=addr_parts['number'],
+            street_prefix=addr_parts['directional'],
+            street_name__startswith=addr_parts['street_name'],
+            zip_code=addr_parts['zip_code']
+        )
+
+        selection = try_to_pick_address(addr)
+        if selection is not None:
+            return selection
+    return None
 
 def geocode_parcel_centroid(addr_parts):
     street = addr_parts['street_name']
@@ -373,6 +484,35 @@ def geocode_parcel_centroid(addr_parts):
     else:
         return None
 
+def geocode_parcel_centroid_distinguish(addr_parts):
+    """A variant of geocode_parcel_centroid that tries hard to
+    disambiguate similar results."""
+    street = addr_parts['street_name']
+    if addr_parts['directional']:
+        street = addr_parts['directional'] + ' ' + street
+    city = addr_parts['city']
+
+    parcels = Parcel.objects.filter(
+        addr_number=addr_parts['number'],
+        addr_street__startswith=street,
+        addr_zip=zip
+    )
+    if len(parcels) == 1:
+        return parcels[0].geom
+
+    parcels = Parcel.objects.filter(
+        addr_number=addr_parts['number'],
+        addr_street__startswith=street,
+        addr_city__startswith=city,
+        addr_zip=zip
+    )
+
+    if len(parcels) == 1:
+        return parcels[0].geom
+    elif len(parcels) == 0:
+        return None
+    else:
+        raise ValueError("Found {} parcels with the same house number ({}), starting characters for the street name ({}), city ({}) and ZIP code ({}).".format(addr_parts['number'], street, city, zip))
 
 def geocode_file(input_file, address_field):
     fields = []
@@ -470,10 +610,10 @@ def fix_street_type(street_type):
         result = ''
     return result
 
-
-def forward_geocode(address):
+def forward_geocode(address, disambiguate=True):
     """
-    Looks up geo data pertaining to `address`
+    Looks up geo data pertaining to `address`, but distinguish
+    addresses with different cities.
 
     :param address:
     :return:
@@ -482,7 +622,10 @@ def forward_geocode(address):
                  ('regions', {}), ('status', 'ERROR')])
     try:
         # get point
-        point = geocode_from_address_string(address)
+        point = geocode_from_address_string(address, disambiguate)
+        if disambiguate and point is None:
+            result['status'] = "Unable to geocode this address to a single unambigous point."
+            return result
         result['geom'] = {'type': 'Point', 'coordinates': list(point.coords)}
         result['status'] = 'WARNING: Only found point of address'
 
@@ -501,11 +644,28 @@ def forward_geocode(address):
                 distance=Distance('geom', point)), key=lambda obj_: obj_.distance)
             parcel = ordered_parcels[0]
             result['status'] = 'WARNING: using closed parcel to address point.'
-        else:
+        elif len(parcels) == 1:
             parcel = parcels[0]
             result['status'] = 'OK'
-        result['parcel_id'] = parcel.pin
+        else:
+            # Why are there multiple parcels here that contain the point?
+            if not disambiguate:
+                parcel = parcels[0]
+                result['status'] = 'OK'
+            else:
+                result['status'] = "There are {} parcels that contain the point ({}, {}).".format(len(parcels), point.x, point.y)
 
+        result['parcel_id'] = parcel.pin
+    except:
+        if not disambiguate:
+            pass
+        else:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            print("Error: {}".format(exc_type))
+            lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+            print(''.join('!!! ' + line for line in lines))
+            import re
+            result['status'] = re.sub('\n', '|', ''.join('!!! ' + line for line in lines))
     finally:
         return result
 
