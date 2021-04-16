@@ -6,6 +6,7 @@ import usaddress
 from collections import OrderedDict as OD
 import json
 import csv
+import re
 from django.forms.models import model_to_dict
 from django.contrib.gis.db.models.functions import Scale
 
@@ -15,6 +16,8 @@ from .models import Parcel, AdminRegion, AddressPoint, RegionType
 
 from django.contrib.gis.measure import D
 from django.contrib.gis.db.models.functions import Distance
+
+from pprint import pprint
 
 AVAILABLE_METHODS = ('download',)
 AVAILABLE_FORMATS = ('json', 'geojson',)
@@ -39,6 +42,8 @@ SELECT row_to_json(fc)
    FROM ({inner_query}) As lg   ) As f )  As fc;
 """
 
+cardinal_direction = {'N': 'NORTH', 'E': 'EAST',
+                      'S': 'SOUTH', 'W': 'WEST'}
 
 def parcels_in_region(region_type, region_name):
     conn = psycopg2.connect("dbname=geo")
@@ -80,7 +85,6 @@ def parse_coord_string(coord_string):
     x, y = coord_string.split(',')
     return float(x), float(y)
 
-
 def parse_address_string(addr_str):
     """
     Parses address string into constituent parts.
@@ -97,14 +101,208 @@ def parse_address_string(addr_str):
     else:
         directional = ''
 
+    street_name = address_parts.get('StreetName', '').upper()
+    street_type = fix_street_type(address_parts.get('StreetNamePostType', '').upper())
+    city = address_parts.get('PlaceName', '').upper()
+    zip_code = address_parts.get('ZipCode', '').upper()[:5]
+    if 'StreetNamePreType' in address_parts: # Example: Avenue F parses this way.
+        street_name = address_parts.get('StreetNamePreType', '').upper() + ' ' + street_name
+
+    if street_name == 'PROSPECT' and street_type in ['TER', 'TERR', 'TERRACE'] and zip_code == '15112':
+        street_type = 'DR' # Correct mismatch between database and common address represenation.
+
+    if city == 'PGH':
+        city = 'PITTSBURGH'
+
+    if directional.upper() == 'E' and street_name in ['PITTSBURGH MCKEESPORT', 'PGH MCKEESPORT', 'PGH MCK', 'PITTSBURGH MCK']:
+        directional = ''
+        street_name = 'EAST PITTSBURGH MCKEESPORT'
+
+    if directional.upper() == 'E' and street_name == 'LIBERTY':
+        directional = ''
+        street_name = 'EAST LIBERTY'
+
+    if directional.upper() == 'E' and street_name == 'END':
+        directional = ''
+        street_name = 'EAST END'
+
+    if directional.upper() == 'E' and street_name == 'HILLS':
+        directional = ''
+        street_name = 'EAST HILLS'
+
+    if directional.upper() == 'N' and street_name == 'FLORENCE' and zip_code == '15237':
+        directional = ''
+        street_name = 'NORTH FLORENCE'
+
+    if directional.upper() == 'W' and street_name == 'RUN' and zip_code in ['15207', '15120']:
+        directional = ''
+        street_name = 'WEST RUN'
+
+    if directional.upper() == 'W' and street_name == 'VIEW' and zip_code in ['15237', '15229']:
+        directional = ''
+        street_name = 'WEST VIEW'
+
+    if directional.upper() == 'W' and street_name == 'LIBERTY' and zip_code in ['15216', '15226']:
+        directional = ''
+        street_name = 'WEST LIBERTY'
+
+    if directional.upper() == 'W' and street_name == 'WOOD' and zip_code in ['15122', '15209', '15235', '15044', '15211']:
+        directional = ''
+        street_name = 'WESTWOOD'
+
+    if street_name in ['ICE PLANT HILL', 'ICEPLANT HILL', 'ICEPLANT']:
+        street_name = 'ICE PLANT' # This addresses an issue in the AddressPoint database
+        # or at least a lack of nuance.
+
+# Streets with type VLG that may be getting 'VILLAGE' lumped in with their street name:
+# {'HARRISON VLG, MCKEESPORT 15132', 'SOUTH HILLS VLG, BETHEL PARK 15241', 'SOUTH HILLS VLG, UPPER ST CLAIR 15241', 'HAWKINS VLG, RANKIN 15104', 'CRAWFORD VLG, MCKEESPORT 15132', 'LAUREL VLG, BEN AVON 15202'}
+    if street_name == ['CRAWFORD VILLAGE', 'CRAWFORD VILL', 'CRAWFORD VLG'] and street_type == '' and zip_code in ['15132']:
+        street_name = 'CRAWFORD'
+        street_type = 'VLG'
+    if street_name in ['HARRISON VILLAGE', 'HARRISON VILL', 'HARRISON VLG'] and street_type == '' and zip_code in ['15132']:
+        street_name = 'HARRISON'
+        street_type = 'VLG'
+    if street_name == ['HAWKINS VILLAGE', 'HAWKINS VILL', 'HAWKINS VLG'] and street_type == '' and zip_code in ['15104']:
+        street_name = 'HAWKINS'
+        street_type = 'VLG'
+    if street_name == ['LAUREL VILLAGE', 'LAUREL VILL', 'LAUREL VLG'] and street_type == '' and zip_code in ['15202']:
+        street_name = 'LAUREL'
+        street_type = 'VLG'
+    if street_name == ['SOUTH HILLS VILLAGE', 'SOUTH HILLS VILL', 'SOUTH HILLS VLG'] and street_type == '' and zip_code in ['15241']:
+        street_name = 'SOUTH HILLS'
+        street_type = 'VLG'
+
+    if street_name in ['ALPAN VILLAGE', 'ALPAN VILL', 'ALPAN VLG', 'ALPINE VILL', 'ALPINE VLG'] and zip_code in ['15146']:
+        street_name = 'ALPINE VILLAGE' # The full name is ALPINE VILLAGE DRIVE.
+
+    if street_name in ['BROWNVILLE', 'BROWSVILLE', 'BROWNSVILLLE'] and zip_code in ['15210', '15236', '15129', '15227', '15332']:
+        street_name = 'BROWNSVILLE'
+
+    if street_name in ['CATHERINE', 'CATHRINE', 'KATHERINE', 'KATHRINE', 'KATHARINE'] and zip_code in ['15110']:
+        street_name = 'CATHARINE'
+    if street_name in ['CHARLEMANE', 'CHARLEMANGE'] and zip_code in ['15237']:
+        street_name = 'CHARLEMAGNE'
+    if street_name in ['CHARLEMA'] and zip_code in ['15214']:
+        street_name = 'CHARLEMMA'
+
+    if street_name in ['GLENMAWR'] and zip_code in ['15204', '15220']:
+        street_name = 'GLEN MAWR'
+    if street_name == 'GLEN MAWR' and zip_code in ['15204', '15220']:
+        street_type = 'AVE'
+    if street_name in ['GLENSHANNON'] and zip_code in ['15234']:
+        street_name = 'GLEN SHANNON'
+    if street_name in ['GREENVALLEY'] and zip_code in ['15116', '15237', '15235', '15220']:
+        street_name = 'GREEN VALLEY'
+
+    if street_name == 'HAWKING' and zip_code in ['15122', '15104', '15214']:
+        street_name = 'HAWKINS'
+    if street_name == 'HOLLYLYNNE' and zip_code in ['15236', '15102']:
+        street_name = 'HOLLY LYNNE'
+    if street_name in ['JAMES HENERY JUNIOR', 'JAMES HENRY JUNIOR', 'JAMES HENERY JR']:
+        street_name = 'JAMES HENRY JR'
+    if street_name in ['MARGERET', 'MARGERT', 'MARGRET'] and zip_code in ['15210', '15104', '15126', '15227', '15238', '15046', '15136', '15089', '15106', '15120', '15235', '15209', '15017']:
+        street_name = 'MARGARET'
+    if street_name in ['MILLVILLE', 'MILLVILL'] and zip_code in ['15213', '15238', '15224']:
+        street_name = 'MILLVALE'
+
+
+    if street_name == 'OAKHILL' and street_type in ['DR', 'DRIVE'] and zip_code in ['15213']:
+        street_name = 'OAK HILL'
+    if street_name == 'OAKLYNN' and zip_code in ['15220']:
+        street_name = 'OAK LYNN'
+    if street_name == 'PARKHILL' and zip_code in ['15221']:
+        street_name = 'PARK HILL'
+
+    if street_name in ['RUSSELWOOD'] and zip_code in ['15136']:
+        street_name = 'RUSSELLWOOD'
+
+    # Handle misspellings of "SAINT" ==> "ST" street names first.
+    if street_name in ['ST CLAIRE', "SAINT CLAIRE"]:
+        street_name = 'SAINT CLAIR'
+    if street_name in ['ST CROI', 'ST CROY', 'SAINT CROY']:
+        street_name = 'SAINT CROIX'
+    if street_name in ['ST JOHNS', "ST JOHN'S"]:
+        street_name = 'SAINT JOHNS'
+    if street_name in ['ST AGNES', 'ST ANDREW', 'ST ANDREWS', 'ST ANN', 'ST ANNE', 'ST CHARLES', 'ST CLAIR', 'ST CROIX', 'ST DAVID', 'ST GEORGE', 'ST GERMAINE', 'ST IVES', 'ST JAMES', 'ST JOHN', 'ST JOHNS', 'ST JOSEPH', 'ST LAWRENCE', 'ST LEO', 'ST LUCAS', 'ST MARIE', 'ST MARKS', 'ST MARTIN', 'ST MARTINS', 'ST MARYS', 'ST MELLION', 'ST MICHAEL', 'ST MORITZ', 'ST NORBERT', 'ST PATRICK', 'ST PAUL', 'ST PETER', 'ST REGIS', 'ST ROSE', 'ST SIMON', 'ST SUSANNA', 'ST THERESE', 'ST THOMAS', 'ST VINCENT', 'ST WILLIAM']:
+        street_name = re.sub('^ST ', 'SAINT ', street_name)
+
+    if street_name in ['STUBENVILLE'] and zip_code in ['15205', '15071', '15126', '15275', '15136', '15057']:
+        street_name = 'STEUBENVILLE'
+
+    if street_name in ['SWISSVILLE'] and zip_code in ['15221']:
+        street_name = 'SWISSVALE'
+
+    if street_name in ['SUMMERVILLE'] and zip_code in ['15201', '15243', '15241']:
+        street_name = 'SOMERVILLE'
+
+    if street_name in ['VELONA'] and zip_code in ['15147', '15104', '15235', '15206']:
+        street_name = 'VERONA'
+    if street_name in ['WM PENN'] and zip_code in ['15219', '15221', '15063', '15145', '15143', '15235', '15146']:
+        street_name = 'WILLIAM PENN'
+
+    if street_name == 'CAMBRIDGE' and street_type in ['SQ', 'SQUARE'] and zip_code in ['15146']:
+        street_name = 'CAMBRIDGE SQUARE'
+        street_type = 'DR'
+
+    if street_name == 'HILL SIDE' and zip_code in ['15219']:
+        street_name = 'HILLSIDE'
+
+    if street_name == 'MT PLEASANT':
+        street_name = 'MOUNT PLEASANT'
+
+    if street_name == 'FIRST':
+        street_name = '1ST'
+
+    if street_name == 'SECOND':
+        street_name = '2ND'
+
+    if street_name == 'THIRD':
+        street_name = '3RD'
+
+    if street_name == 'FOURTH':
+        street_name = '4TH'
+
+    if street_name == 'FIFTH':
+        street_name = '5TH'
+
+    if street_name == 'SIXTH':
+        street_name = '6TH'
+
+    if street_name == 'SEVENTH':
+        street_name = '7TH'
+
+    if street_name == 'EIGHTH':
+        street_name = '8TH'
+
+    if street_name == 'NINTH':
+        street_name = '9TH'
+
+    if street_name == 'TENTH':
+        street_name = '10TH'
+
+    if street_name == 'ELEVENTH':
+        street_name = '11TH'
+
+    if street_name == 'TWELFTH':
+        street_name = '12TH'
+
+    if street_name == 'THIRTEENTH':
+        street_name = '13TH'
+
+    if street_name == 'FOURTEENTH':
+        street_name = '14TH'
+
+    if street_name == 'FIFTEENTH':
+        street_name = '15TH'
+
     return ({
         'number': address_parts.get('AddressNumber', '').upper(),
         'directional': directional,
-        'street_name': address_parts.get('StreetName', '').upper(),
-        'street_type': fix_street_type(address_parts.get('StreetNamePostType', '').upper()),
-        'city': address_parts.get('PlaceName', '').upper(),
+        'street_name': re.sub("'", "", street_name),
+        'street_type': street_type,
+        'city': city,
         'state': address_parts.get('StateName', '').upper(),
-        'zip_code': address_parts.get('ZipCode', '').upper(),
+        'zip_code': zip_code,
     })
 
 
